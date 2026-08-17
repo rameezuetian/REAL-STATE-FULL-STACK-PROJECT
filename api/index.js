@@ -40,24 +40,21 @@ mongoose
 
 app.use(express.json());
 
-
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
-
 // api routes
 app.use("/api/user", userRoute);
 app.use("/api/auth", authRoute);
 
-
-
-// middle ware
-app.use((err  , req, res , next)=>{
-  const statusCode  = err.statusCode || 500;
+// error handling middleware (must be last)
+app.use((err, req, res, next) => {
+  const statusCode = err.statusCode || 500;
   const message = err.message || 'Internal Server Error';
   return res.status(statusCode).json({
     success: false,
-    statusCode ,
+    statusCode,
     message,
   });
+});
+
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
 });
