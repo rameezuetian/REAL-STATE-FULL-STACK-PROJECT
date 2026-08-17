@@ -3,6 +3,8 @@ const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const path = require("path");
 
+import userRoute from "./routes/user.route"
+
 dotenv.config({ path: path.resolve(__dirname, "config/config.env") });
 
 const app = express();
@@ -33,3 +35,9 @@ mongoose
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
+
+
+
+
+// api routes
+app.use('/api/user' , userRoute )
