@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 import dns from "dns";
-
+import cookieParser from "cookie-parser";
 import userRoute from "./routes/user.route.js";
 import authRoute from "./routes/auth.route.js";
 
@@ -39,7 +39,7 @@ mongoose
 
 
 app.use(express.json());
-
+app.use(cookieParser())
 // api routes
 app.use("/api/user", userRoute);
 app.use("/api/auth", authRoute);
