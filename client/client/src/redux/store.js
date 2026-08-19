@@ -10,13 +10,26 @@ import {
   persistStore,
 } from "redux-persist";
 
-import storage from "redux-persist/lib/storage";
+// Use browser localStorage directly
+const storage = {
+  getItem: (key) => {
+    return Promise.resolve(localStorage.getItem(key));
+  },
 
+  setItem: (key, value) => {
+    localStorage.setItem(key, value);
+    return Promise.resolve();
+  },
+
+  removeItem: (key) => {
+    localStorage.removeItem(key);
+    return Promise.resolve();
+  },
+};
 
 const rootReducer = combineReducers({
   user: userReducer,
 });
-
 
 const persistConfig = {
   key: "root",
@@ -24,12 +37,10 @@ const persistConfig = {
   version: 1,
 };
 
-
 const persistedReducer = persistReducer(
   persistConfig,
   rootReducer
 );
-
 
 export const store = configureStore({
   reducer: persistedReducer,
@@ -39,6 +50,5 @@ export const store = configureStore({
       serializableCheck: false,
     }),
 });
-
 
 export const persistor = persistStore(store);
