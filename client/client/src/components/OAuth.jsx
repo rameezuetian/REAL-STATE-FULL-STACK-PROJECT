@@ -54,7 +54,7 @@ export default function OAuth() {
 
       // Save user in Redux
       dispatch(signInSuccess(data));
-      navigate('/');
+      navigate('/profile');
 
     } catch (error) {
       console.log(
