@@ -11,45 +11,70 @@ export const test = (req  , res) =>{
 
 
 
-export const updateUser = async (req , res , next)=>{
-
-    console.log("JWT USER:", req.user);
+export const updateUser = async (req, res, next) => {
+  console.log("BODY:", req.body);
   console.log("PARAM ID:", req.params.id);
 
-    if(req.user.id !== req.params.id) return next(errorHandler(401 , "You can only update your own account!"))
+  if (req.body.id !== req.params.id) {
+    return next(
+      errorHandler(401, "You can only update your own account!")
+    );
+  }
 
+  try {
+    const updateFields = {
+      username: req.body.username,
+      email: req.body.email,
+      avatar: req.body.avatar,
+    };
 
-    try {
-
-        if(req.body.password){
-            req.body.password = bcrypt.hashSync(req.body.password, 10)
-        }
-        const updateUser= await User.findByIdAndUpdate(
-            req.params.id,
-            {
-                $set:{
-                    username:req.body.username,
-                    email:req.body.email,
-                    password: req.body.password,
-                    avatar:req.body.avatar
-                },
-            },
-            {
-                returnDocument:'after',
-            }
-        );
-
-        if(!updateUser){
-            return res.status(404).json({
-                success:false,
-                message:"User nor Found",
-            });
-        }
-        const {password  , ...rest} = updateUser._doc;
-        res.status(200).json(rest);
-    } catch (error) {
-        next(error)
-        
+    if (req.body.password && req.body.password.trim() !== "") {
+      updateFields.password = bcryptjs.hashSync(
+        req.body.password,
+        10
+      );
     }
 
+    console.log("UPDATE FIELDS:", updateFields);
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.id,
+      {
+        $set: updateFields,
+      },
+      {
+        returnDocument: "after",
+      }
+    );
+
+    console.log("UPDATED USER:", updatedUser);
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const { password, ...rest } = updatedUser._doc;
+
+    return res.status(200).json(rest);
+
+  } catch (error) {
+    console.log("🔥 UPDATE USER ERROR:", error);
+    next(error);
+  }
+};
+
+
+export const deleteUser = async (req , res , next)=>{
+
+    if(req.user.id !==  req.params.id) return next(errorHandler(401 , 'You can only delete your own account!'))
+    try {
+        await User.findByIdAndDelete(req.params.id);
+        res.clearCookie('access_token');
+        res.status(200).json("User has been deleted!");
+    } catch (error) {
+        next(error)
+    }
 }
