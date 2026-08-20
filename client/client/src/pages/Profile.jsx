@@ -1,18 +1,38 @@
 import React from 'react';
+
 import { useSelector, useDispatch } from 'react-redux';
+
 import { useRef, useState } from 'react';
-import { signInSuccess } from '../redux/user/userSlice';
+
+import {
+  signInSuccess,
+  updateUserFailure,
+  updateUserStarts,
+  updateUserSuccess,
+} from '../redux/user/userSlice';
 
 export default function Profile() {
-  const { currentUser } = useSelector((state) => state.user);
+  const { currentUser, loading } = useSelector((state) => state.user);
+
   const dispatch = useDispatch();
+
+  const [formData, setFormData] = useState({
+    username: currentUser.username,
+    email: currentUser.email,
+    password: '',
+  });
 
   const [image, setImage] = useState(currentUser.avatar);
   const [uploading, setUploading] = useState(false);
+
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
 
   const fileRef = useRef(null);
+
+  // =========================
+  // IMAGE UPLOAD
+  // =========================
 
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
@@ -33,7 +53,6 @@ export default function Profile() {
     );
 
     try {
-      // Upload image to Cloudinary
       const res = await fetch(
         `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
         {
@@ -45,12 +64,13 @@ export default function Profile() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error?.message || 'Cloudinary upload failed');
+        throw new Error(
+          data.error?.message || 'Cloudinary upload failed'
+        );
       }
 
       console.log('Cloudinary:', data);
 
-      // Show uploaded image immediately
       setImage(data.secure_url);
 
       // Save image URL to MongoDB
@@ -62,6 +82,7 @@ export default function Profile() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
+            id: currentUser._id,
             avatar: data.secure_url,
           }),
         }
@@ -77,22 +98,95 @@ export default function Profile() {
 
       console.log('Updated User:', updateUser);
 
-      // Update Redux
       dispatch(signInSuccess(updateUser));
+
+      setSuccess(true);
+
+      setTimeout(() => {
+        setSuccess(false);
+      }, 3000);
+    } catch (error) {
+      console.log('Image upload failed:', error);
+
+      setError(error.message || 'Image upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // =========================
+  // INPUT CHANGE
+  // =========================
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.id]: e.target.value,
+    });
+  };
+
+  // =========================
+  // UPDATE USER
+  // =========================
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      dispatch(updateUserStarts());
+
+      setSuccess(false);
+      setError('');
+
+      const res = await fetch(
+        `/api/user/update/${currentUser._id}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ...formData,
+            id: currentUser._id,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        dispatch(updateUserFailure(data.message));
+        setError(data.message);
+        return;
+      }
+
+      console.log('User updated:', data);
+
+      dispatch(updateUserSuccess(data));
+
+      // Update image/state if backend returns avatar
+      if (data.avatar) {
+        setImage(data.avatar);
+      }
 
       // Show success message
       setSuccess(true);
 
-      // Hide message after 3 seconds
+      // Clear password field
+      setFormData({
+        ...formData,
+        password: '',
+      });
+
       setTimeout(() => {
         setSuccess(false);
       }, 3000);
-
     } catch (error) {
-      console.log('Image upload failed:', error);
-      setError(error.message || 'Image upload failed');
-    } finally {
-      setUploading(false);
+      console.log('Update failed:', error);
+
+      dispatch(updateUserFailure(error.message));
+
+      setError(error.message);
     }
   };
 
@@ -103,9 +197,14 @@ export default function Profile() {
         Profile
       </h1>
 
-      <form className='flex flex-col gap-4'>
+      {/* IMPORTANT: onSubmit */}
+      <form
+        onSubmit={handleSubmit}
+        className='flex flex-col gap-4'
+      >
 
         {/* File Input */}
+
         <input
           type='file'
           ref={fileRef}
@@ -115,6 +214,7 @@ export default function Profile() {
         />
 
         {/* Profile Image */}
+
         <img
           onClick={() =>
             !uploading && fileRef.current.click()
@@ -124,14 +224,16 @@ export default function Profile() {
           className='rounded-full h-24 w-24 object-cover cursor-pointer self-center mt-2'
         />
 
-        {/* Success Message */}
+        {/* Image Success */}
+
         {success && (
           <p className='text-green-600 text-sm text-center'>
-            Profile picture uploaded successfully! ✓
+            Profile updated successfully! ✓
           </p>
         )}
 
-        {/* Error Message */}
+        {/* Error */}
+
         {error && (
           <p className='text-red-600 text-sm text-center'>
             {error}
@@ -139,44 +241,52 @@ export default function Profile() {
         )}
 
         {/* Username */}
+
         <input
           type='text'
           placeholder='Username'
           className='border p-3 rounded-lg'
           id='username'
-          value={currentUser.username}
-          readOnly
+          value={formData.username}
+          onChange={handleChange}
         />
 
         {/* Email */}
+
         <input
           type='email'
           placeholder='Email'
           className='border p-3 rounded-lg'
           id='email'
-          value={currentUser.email}
-          readOnly
+          value={formData.email}
+          onChange={handleChange}
         />
 
         {/* Password */}
+
         <input
           type='password'
           placeholder='Password'
           className='border p-3 rounded-lg'
           id='password'
+          value={formData.password}
+          onChange={handleChange}
         />
 
         {/* Update Button */}
+
         <button
-          disabled={uploading}
+          type='submit'
+          disabled={loading || uploading}
           className='bg-slate-700 text-white rounded-lg p-3 uppercase hover:opacity-95 disabled:opacity-80'
         >
-          {uploading ? 'Uploading...' : 'Update'}
+          {loading ? 'Updating...' : 'Update'}
         </button>
 
       </form>
 
       {/* Delete / Sign Out */}
+
       <div className='flex justify-between mt-5'>
 
         <span className='text-red-700 cursor-pointer'>
