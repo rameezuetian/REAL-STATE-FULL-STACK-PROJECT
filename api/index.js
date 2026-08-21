@@ -7,6 +7,7 @@ import dns from "dns";
 import cookieParser from "cookie-parser";
 import userRoute from "./routes/user.route.js";
 import authRoute from "./routes/auth.route.js";
+import listingRoute from "./routes/listing.route.js"
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -43,6 +44,7 @@ app.use(cookieParser())
 // api routes
 app.use("/api/user", userRoute);
 app.use("/api/auth", authRoute);
+app.use("/api/listing" , listingRoute);
 
 // error handling middleware (must be last)
 app.use((err, req, res, next) => {
