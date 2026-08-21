@@ -6,8 +6,13 @@ export default function CreateListing() {
 
   const [files, setFiles] = useState([]);
   const [imageUrls, setImageUrls] = useState([]);
+
   const [uploading, setUploading] = useState(false);
+  const [creating, setCreating] = useState(false);
+
   const [uploadError, setUploadError] = useState("");
+  const [success, setSuccess] = useState("");
+
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -19,13 +24,13 @@ export default function CreateListing() {
     offer: false,
     bedrooms: 1,
     bathrooms: 1,
-    regularPrice: 0,
-    discountPrice: 0,
+    regularPrice: "",
+    discountPrice: "",
   });
 
-  // =========================
+  // ==============================
   // HANDLE INPUT CHANGE
-  // =========================
+  // ==============================
 
   const handleChange = (e) => {
     const { id, value, type, checked } = e.target;
@@ -36,9 +41,9 @@ export default function CreateListing() {
     });
   };
 
-  // =========================
+  // ==============================
   // CLOUDINARY IMAGE UPLOAD
-  // =========================
+  // ==============================
 
   const storeImage = async (file) => {
     const formData = new FormData();
@@ -62,26 +67,49 @@ export default function CreateListing() {
 
     if (!res.ok) {
       throw new Error(
-        data.error?.message || "Image upload failed"
+        data.error?.message || "Cloudinary image upload failed"
       );
     }
 
     return data.secure_url;
   };
 
-  // =========================
-  // HANDLE IMAGE UPLOAD
-  // =========================
+  // ==============================
+  // IMAGE SELECT
+  // ==============================
+
+  const handleFileSelect = (e) => {
+    const selectedFiles = Array.from(e.target.files);
+
+    setUploadError("");
+    setSuccess("");
+
+    if (selectedFiles.length === 0) {
+      return;
+    }
+
+    // Current images + new images
+    if (imageUrls.length + selectedFiles.length > 6) {
+      setUploadError("You can upload a maximum of 6 images.");
+      return;
+    }
+
+    setFiles(selectedFiles);
+  };
+
+  // ==============================
+  // UPLOAD IMAGES
+  // ==============================
 
   const handleImageSubmit = async (e) => {
     e.preventDefault();
 
     if (files.length === 0) {
-      setUploadError("Please select at least one image.");
+      setUploadError("Please select images first.");
       return;
     }
 
-    if (files.length > 6) {
+    if (imageUrls.length + files.length > 6) {
       setUploadError("You can upload a maximum of 6 images.");
       return;
     }
@@ -89,59 +117,101 @@ export default function CreateListing() {
     try {
       setUploading(true);
       setUploadError("");
+      setSuccess("");
 
-      const promises = [];
-
-      for (let i = 0; i < files.length; i++) {
-        promises.push(storeImage(files[i]));
-      }
+      const promises = files.map((file) => storeImage(file));
 
       const urls = await Promise.all(promises);
 
-      setImageUrls(urls);
+      setImageUrls((prev) => [...prev, ...urls]);
 
-      console.log("Uploaded images:", urls);
+      // Clear selected files
+      setFiles([]);
+
+      setSuccess("Images uploaded successfully!");
+
+      setTimeout(() => {
+        setSuccess("");
+      }, 3000);
 
     } catch (error) {
       console.log("Image upload error:", error);
-      setUploadError(error.message);
+
+      setUploadError(
+        error.message || "Image upload failed"
+      );
     } finally {
       setUploading(false);
     }
   };
 
-  // =========================
+  // ==============================
+  // REMOVE IMAGE
+  // ==============================
+
+  const handleRemoveImage = (index) => {
+    setImageUrls((prev) =>
+      prev.filter((_, i) => i !== index)
+    );
+
+    setSuccess("");
+  };
+
+  // ==============================
   // CREATE LISTING
-  // =========================
+  // ==============================
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    setUploadError("");
+    setSuccess("");
 
     if (imageUrls.length === 0) {
       setUploadError("Please upload at least one image.");
       return;
     }
 
+    if (imageUrls.length > 6) {
+      setUploadError("You can upload a maximum of 6 images.");
+      return;
+    }
+
     try {
+      setCreating(true);
+
       const listingData = {
-        ...formData,
-        bedrooms: Number(formData.bedrooms),
-        bathrooms: Number(formData.bathrooms),
+        name: formData.name,
+        description: formData.description,
+        address: formData.address,
+
         regularPrice: Number(formData.regularPrice),
         discountPrice: Number(formData.discountPrice),
-        imageUrls,
+
+        bedrooms: Number(formData.bedrooms),
+        bathrooms: Number(formData.bathrooms),
+
+        furnished: formData.furnished,
+        parking: formData.parking,
+        offer: formData.offer,
+
+        imageUrls: imageUrls,
+
         userRef: currentUser._id,
       };
 
       console.log("Listing data:", listingData);
 
-      const res = await fetch("/api/listing/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(listingData),
-      });
+      const res = await fetch(
+        "/api/listing/create",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(listingData),
+        }
+      );
 
       const data = await res.json();
 
@@ -153,16 +223,44 @@ export default function CreateListing() {
 
       console.log("Listing created:", data);
 
-      alert("Listing created successfully!");
+      setSuccess("Listing created successfully!");
+
+      // Clear form
+      setFormData({
+        name: "",
+        description: "",
+        address: "",
+        sale: false,
+        rent: false,
+        parking: false,
+        furnished: false,
+        offer: false,
+        bedrooms: 1,
+        bathrooms: 1,
+        regularPrice: "",
+        discountPrice: "",
+      });
+
+      setImageUrls([]);
+      setFiles([]);
 
     } catch (error) {
       console.log("Create listing error:", error);
-      setUploadError(error.message);
+
+      setUploadError(
+        error.message || "Failed to create listing"
+      );
+    } finally {
+      setCreating(false);
     }
   };
 
   return (
     <main className="p-3 max-w-4xl mx-auto">
+
+      {/* =========================
+          TITLE
+      ========================== */}
 
       <h1 className="text-3xl font-semibold text-center my-7">
         Create a Listing
@@ -173,9 +271,13 @@ export default function CreateListing() {
         className="flex flex-col sm:flex-row gap-4"
       >
 
-        {/* ================= LEFT SIDE ================= */}
+        {/* =========================
+            LEFT SIDE
+        ========================== */}
 
         <div className="flex flex-col gap-4 flex-1">
+
+          {/* NAME */}
 
           <input
             type="text"
@@ -189,8 +291,9 @@ export default function CreateListing() {
             onChange={handleChange}
           />
 
-          <input
-            type="text"
+          {/* DESCRIPTION */}
+
+          <textarea
             placeholder="Description"
             className="border p-3 rounded-lg"
             id="description"
@@ -200,6 +303,8 @@ export default function CreateListing() {
             value={formData.description}
             onChange={handleChange}
           />
+
+          {/* ADDRESS */}
 
           <input
             type="text"
@@ -225,6 +330,7 @@ export default function CreateListing() {
                 checked={formData.sale}
                 onChange={handleChange}
               />
+
               <span>Sell</span>
             </div>
 
@@ -236,6 +342,7 @@ export default function CreateListing() {
                 checked={formData.rent}
                 onChange={handleChange}
               />
+
               <span>Rent</span>
             </div>
 
@@ -247,6 +354,7 @@ export default function CreateListing() {
                 checked={formData.parking}
                 onChange={handleChange}
               />
+
               <span>Parking Spot</span>
             </div>
 
@@ -258,6 +366,7 @@ export default function CreateListing() {
                 checked={formData.furnished}
                 onChange={handleChange}
               />
+
               <span>Furnished</span>
             </div>
 
@@ -269,6 +378,7 @@ export default function CreateListing() {
                 checked={formData.offer}
                 onChange={handleChange}
               />
+
               <span>Offer</span>
             </div>
 
@@ -279,6 +389,7 @@ export default function CreateListing() {
           <div className="flex flex-wrap gap-6">
 
             <div className="flex items-center gap-2">
+
               <input
                 type="number"
                 id="bedrooms"
@@ -289,10 +400,13 @@ export default function CreateListing() {
                 value={formData.bedrooms}
                 onChange={handleChange}
               />
+
               <p>Beds</p>
+
             </div>
 
             <div className="flex items-center gap-2">
+
               <input
                 type="number"
                 id="bathrooms"
@@ -303,7 +417,9 @@ export default function CreateListing() {
                 value={formData.bathrooms}
                 onChange={handleChange}
               />
+
               <p>Baths</p>
+
             </div>
 
           </div>
@@ -356,7 +472,9 @@ export default function CreateListing() {
 
         </div>
 
-        {/* ================= RIGHT SIDE ================= */}
+        {/* =========================
+            RIGHT SIDE
+        ========================== */}
 
         <div className="flex flex-col flex-1 gap-4">
 
@@ -368,15 +486,12 @@ export default function CreateListing() {
             </span>
           </p>
 
-          {/* IMAGE INPUT */}
+          {/* FILE SELECT */}
 
           <div className="flex gap-4">
 
             <input
-              onChange={(e) => {
-                setFiles(e.target.files);
-                setUploadError("");
-              }}
+              onChange={handleFileSelect}
               className="p-3 border border-gray-300 rounded w-full"
               type="file"
               id="images"
@@ -387,13 +502,31 @@ export default function CreateListing() {
             <button
               type="button"
               onClick={handleImageSubmit}
-              disabled={uploading}
+              disabled={
+                uploading ||
+                files.length === 0 ||
+                imageUrls.length >= 6
+              }
               className="p-3 text-green-700 border border-green-700 rounded uppercase hover:shadow-lg disabled:opacity-80"
             >
               {uploading ? "Uploading..." : "Upload"}
             </button>
 
           </div>
+
+          {/* IMAGE LIMIT */}
+
+          <p className="text-sm text-gray-500">
+            {imageUrls.length}/6 images uploaded
+          </p>
+
+          {/* SUCCESS */}
+
+          {success && (
+            <p className="text-green-600 text-sm">
+              {success}
+            </p>
+          )}
 
           {/* ERROR */}
 
@@ -403,27 +536,46 @@ export default function CreateListing() {
             </p>
           )}
 
-          {/* UPLOADED IMAGES */}
+          {/* =========================
+              IMAGE PREVIEW
+          ========================== */}
 
           {imageUrls.length > 0 && (
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
 
               {imageUrls.map((url, index) => (
 
-                <div key={url} className="relative">
+                <div
+                  key={url}
+                  className="relative border rounded-lg overflow-hidden"
+                >
 
                   <img
                     src={url}
                     alt={`Listing ${index + 1}`}
-                    className="w-full h-24 object-cover rounded-lg"
+                    className="w-full h-32 object-cover"
                   />
 
+                  {/* COVER */}
+
                   {index === 0 && (
-                    <span className="absolute bottom-1 left-1 bg-black text-white text-xs px-2 py-1 rounded">
+                    <span className="absolute top-1 left-1 bg-black text-white text-xs px-2 py-1 rounded">
                       Cover
                     </span>
                   )}
+
+                  {/* REMOVE */}
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleRemoveImage(index)
+                    }
+                    className="absolute top-1 right-1 bg-red-600 text-white w-7 h-7 rounded-full hover:bg-red-700"
+                  >
+                    ×
+                  </button>
 
                 </div>
 
@@ -433,15 +585,21 @@ export default function CreateListing() {
 
           )}
 
-          {/* CREATE LISTING */}
+          {/* =========================
+              CREATE LISTING
+          ========================== */}
 
           <button
             type="submit"
-            disabled={uploading || imageUrls.length === 0}
+            disabled={
+              creating ||
+              uploading ||
+              imageUrls.length === 0
+            }
             className="p-3 bg-slate-700 text-white rounded-lg uppercase hover:opacity-95 disabled:opacity-80"
           >
-            {uploading
-              ? "Uploading..."
+            {creating
+              ? "Creating Listing..."
               : "Create Listing"}
           </button>
 
