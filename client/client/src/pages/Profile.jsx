@@ -4,6 +4,8 @@ import { useSelector, useDispatch } from 'react-redux';
 
 import { useRef, useState } from 'react';
 
+import {Link} from 'react-router-dom'
+
 import {
   signInSuccess,
   updateUserFailure,
@@ -220,7 +222,7 @@ export default function Profile() {
       const res = await fetch('/api/auth/signout');
       const data = await res.json();
       if(data.success === false){
-        dispatch(deleteUserFailure(data.message))
+        dispatch(signOutUserFailure(data.message))
         return;
       }
 
@@ -320,12 +322,19 @@ export default function Profile() {
         {/* Update Button */}
 
         <button
-          type='submit'
-          disabled={loading || uploading}
-          className='bg-slate-700 text-white rounded-lg p-3 uppercase hover:opacity-95 disabled:opacity-80'
-        >
-          {loading ? 'Updating...' : 'Update'}
-        </button>
+  type='submit'
+  disabled={loading || uploading}
+  className='bg-slate-700 text-white rounded-lg p-3 uppercase hover:opacity-95 disabled:opacity-80'
+>
+  {loading ? 'Updating...' : 'Update'}
+</button>
+
+<Link
+  className='bg-green-700 text-white p-3 rounded-lg uppercase text-center hover:opacity-95'
+  to='/create-listing'
+>
+  Create Listing
+</Link>
 
       </form>
 
@@ -341,9 +350,6 @@ export default function Profile() {
           Sign Out
         </span>
 
-      </div>
-      <div className=' justify-items-center text-green-700'>
-        <h4>Show Listings</h4>
       </div>
 
     </div>
