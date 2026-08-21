@@ -1,13 +1,182 @@
-import React from "react";
+import React, { useState } from "react";
+import { useSelector } from "react-redux";
 
 export default function CreateListing() {
+  const { currentUser } = useSelector((state) => state.user);
+
+  const [files, setFiles] = useState([]);
+  const [imageUrls, setImageUrls] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    address: "",
+    sale: false,
+    rent: false,
+    parking: false,
+    furnished: false,
+    offer: false,
+    bedrooms: 1,
+    bathrooms: 1,
+    regularPrice: 0,
+    discountPrice: 0,
+  });
+
+  // =========================
+  // HANDLE INPUT CHANGE
+  // =========================
+
+  const handleChange = (e) => {
+    const { id, value, type, checked } = e.target;
+
+    setFormData({
+      ...formData,
+      [id]: type === "checkbox" ? checked : value,
+    });
+  };
+
+  // =========================
+  // CLOUDINARY IMAGE UPLOAD
+  // =========================
+
+  const storeImage = async (file) => {
+    const formData = new FormData();
+
+    formData.append("file", file);
+
+    formData.append(
+      "upload_preset",
+      import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET
+    );
+
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(
+        data.error?.message || "Image upload failed"
+      );
+    }
+
+    return data.secure_url;
+  };
+
+  // =========================
+  // HANDLE IMAGE UPLOAD
+  // =========================
+
+  const handleImageSubmit = async (e) => {
+    e.preventDefault();
+
+    if (files.length === 0) {
+      setUploadError("Please select at least one image.");
+      return;
+    }
+
+    if (files.length > 6) {
+      setUploadError("You can upload a maximum of 6 images.");
+      return;
+    }
+
+    try {
+      setUploading(true);
+      setUploadError("");
+
+      const promises = [];
+
+      for (let i = 0; i < files.length; i++) {
+        promises.push(storeImage(files[i]));
+      }
+
+      const urls = await Promise.all(promises);
+
+      setImageUrls(urls);
+
+      console.log("Uploaded images:", urls);
+
+    } catch (error) {
+      console.log("Image upload error:", error);
+      setUploadError(error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // =========================
+  // CREATE LISTING
+  // =========================
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (imageUrls.length === 0) {
+      setUploadError("Please upload at least one image.");
+      return;
+    }
+
+    try {
+      const listingData = {
+        ...formData,
+        bedrooms: Number(formData.bedrooms),
+        bathrooms: Number(formData.bathrooms),
+        regularPrice: Number(formData.regularPrice),
+        discountPrice: Number(formData.discountPrice),
+        imageUrls,
+        userRef: currentUser._id,
+      };
+
+      console.log("Listing data:", listingData);
+
+      const res = await fetch("/api/listing/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(listingData),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(
+          data.message || "Failed to create listing"
+        );
+      }
+
+      console.log("Listing created:", data);
+
+      alert("Listing created successfully!");
+
+    } catch (error) {
+      console.log("Create listing error:", error);
+      setUploadError(error.message);
+    }
+  };
+
   return (
     <main className="p-3 max-w-4xl mx-auto">
+
       <h1 className="text-3xl font-semibold text-center my-7">
         Create a Listing
       </h1>
-      <form action="" className="flex flex-col sm:flex-row gap-4">
+
+      <form
+        onSubmit={handleSubmit}
+        className="flex flex-col sm:flex-row gap-4"
+      >
+
+        {/* ================= LEFT SIDE ================= */}
+
         <div className="flex flex-col gap-4 flex-1">
+
           <input
             type="text"
             placeholder="Name"
@@ -16,113 +185,270 @@ export default function CreateListing() {
             maxLength="62"
             minLength="10"
             required
+            value={formData.name}
+            onChange={handleChange}
           />
+
           <input
             type="text"
             placeholder="Description"
             className="border p-3 rounded-lg"
             id="description"
-            maxLength="62"
+            maxLength="500"
             minLength="10"
             required
+            value={formData.description}
+            onChange={handleChange}
           />
+
           <input
             type="text"
             placeholder="Address"
             className="border p-3 rounded-lg"
             id="address"
-            maxLength="62"
+            maxLength="100"
             minLength="10"
             required
+            value={formData.address}
+            onChange={handleChange}
           />
+
+          {/* CHECKBOXES */}
+
           <div className="flex gap-6 flex-wrap">
+
             <div className="flex gap-2">
-              <input type="checkbox" id="sale" className="w-5" />
+              <input
+                type="checkbox"
+                id="sale"
+                className="w-5"
+                checked={formData.sale}
+                onChange={handleChange}
+              />
               <span>Sell</span>
             </div>
+
             <div className="flex gap-2">
-              <input type="checkbox" id="rent" className="w-5" />
+              <input
+                type="checkbox"
+                id="rent"
+                className="w-5"
+                checked={formData.rent}
+                onChange={handleChange}
+              />
               <span>Rent</span>
             </div>
+
             <div className="flex gap-2">
-              <input type="checkbox" id="parking" className="w-5" />
+              <input
+                type="checkbox"
+                id="parking"
+                className="w-5"
+                checked={formData.parking}
+                onChange={handleChange}
+              />
               <span>Parking Spot</span>
             </div>
+
             <div className="flex gap-2">
-              <input type="checkbox" id="furnished" className="w-5" />
+              <input
+                type="checkbox"
+                id="furnished"
+                className="w-5"
+                checked={formData.furnished}
+                onChange={handleChange}
+              />
               <span>Furnished</span>
             </div>
+
             <div className="flex gap-2">
-              <input type="checkbox" id="offer" className="w-5" />
+              <input
+                type="checkbox"
+                id="offer"
+                className="w-5"
+                checked={formData.offer}
+                onChange={handleChange}
+              />
               <span>Offer</span>
             </div>
+
           </div>
 
+          {/* BEDROOMS / BATHROOMS */}
+
           <div className="flex flex-wrap gap-6">
-            <div className="flex item-center gap-2">
+
+            <div className="flex items-center gap-2">
               <input
                 type="number"
-                name=""
                 id="bedrooms"
                 min="1"
                 max="10"
                 required
-                className="p-3 border border-gray-300 rounded-lg"
+                className="p-3 border border-gray-300 rounded-lg w-24"
+                value={formData.bedrooms}
+                onChange={handleChange}
               />
               <p>Beds</p>
             </div>
-            <div className="flex item-center gap-2">
+
+            <div className="flex items-center gap-2">
               <input
                 type="number"
-                name=""
                 id="bathrooms"
                 min="1"
                 max="10"
                 required
-                className="p-3 border border-gray-300 rounded-lg"
+                className="p-3 border border-gray-300 rounded-lg w-24"
+                value={formData.bathrooms}
+                onChange={handleChange}
               />
               <p>Baths</p>
             </div>
-            <div className="flex item-center gap-2">
+
+          </div>
+
+          {/* PRICES */}
+
+          <div className="flex flex-col gap-4">
+
+            <div className="flex items-center gap-2">
+
               <input
                 type="number"
-                name=""
                 id="regularPrice"
                 min="1"
-                max="10"
                 required
-                className="p-3 border border-gray-300 rounded-lg"
+                className="p-3 border border-gray-300 rounded-lg w-full"
+                value={formData.regularPrice}
+                onChange={handleChange}
               />
+
               <p>Regular Price</p>
-              <span className="text-xs">($ / month)</span>
+
+              <span className="text-xs">
+                ($ / month)
+              </span>
+
             </div>
-            <div className="flex item-center gap-2">
+
+            <div className="flex items-center gap-2">
+
               <input
                 type="number"
-                name=""
                 id="discountPrice"
                 min="1"
-                max="10"
                 required
-                className="p-3 border border-gray-300 rounded-lg"
+                className="p-3 border border-gray-300 rounded-lg w-full"
+                value={formData.discountPrice}
+                onChange={handleChange}
               />
+
               <p>Discounted Price</p>
-              <span className="text-xs">($ / month)</span>
+
+              <span className="text-xs">
+                ($ / month)
+              </span>
+
             </div>
+
           </div>
-        </div>
-        <div className="flex flex-col flex-1 gap-4">
-            <p className="font-semibold">Images:
-                <span className="font-normal text-gray-600 ml-2">The first image will be the cover (max 6)</span>
-            </p>
-            <div className="flex gap-4">
-                <input   className="p-3 border border-gray-300 rounded w-full" type="file" id="images" accept="image/*" multiple />
-                    <button className="p-3  text-green-700 border border-green-700 rounded uppercase hover:shadow-lg disabled:opacity-80">Upload</button>
-            </div>
-        <button className="p-3 bg-slate-700 text-white rounded-lg uppercase hover:opacity-95 disabled:opacity-80">Create Listing</button>
 
         </div>
+
+        {/* ================= RIGHT SIDE ================= */}
+
+        <div className="flex flex-col flex-1 gap-4">
+
+          <p className="font-semibold">
+            Images:
+
+            <span className="font-normal text-gray-600 ml-2">
+              The first image will be the cover (max 6)
+            </span>
+          </p>
+
+          {/* IMAGE INPUT */}
+
+          <div className="flex gap-4">
+
+            <input
+              onChange={(e) => {
+                setFiles(e.target.files);
+                setUploadError("");
+              }}
+              className="p-3 border border-gray-300 rounded w-full"
+              type="file"
+              id="images"
+              accept="image/*"
+              multiple
+            />
+
+            <button
+              type="button"
+              onClick={handleImageSubmit}
+              disabled={uploading}
+              className="p-3 text-green-700 border border-green-700 rounded uppercase hover:shadow-lg disabled:opacity-80"
+            >
+              {uploading ? "Uploading..." : "Upload"}
+            </button>
+
+          </div>
+
+          {/* ERROR */}
+
+          {uploadError && (
+            <p className="text-red-600 text-sm">
+              {uploadError}
+            </p>
+          )}
+
+          {/* UPLOADED IMAGES */}
+
+          {imageUrls.length > 0 && (
+
+            <div className="grid grid-cols-3 gap-3">
+
+              {imageUrls.map((url, index) => (
+
+                <div key={url} className="relative">
+
+                  <img
+                    src={url}
+                    alt={`Listing ${index + 1}`}
+                    className="w-full h-24 object-cover rounded-lg"
+                  />
+
+                  {index === 0 && (
+                    <span className="absolute bottom-1 left-1 bg-black text-white text-xs px-2 py-1 rounded">
+                      Cover
+                    </span>
+                  )}
+
+                </div>
+
+              ))}
+
+            </div>
+
+          )}
+
+          {/* CREATE LISTING */}
+
+          <button
+            type="submit"
+            disabled={uploading || imageUrls.length === 0}
+            className="p-3 bg-slate-700 text-white rounded-lg uppercase hover:opacity-95 disabled:opacity-80"
+          >
+            {uploading
+              ? "Uploading..."
+              : "Create Listing"}
+          </button>
+
+        </div>
+
       </form>
+
     </main>
   );
 }

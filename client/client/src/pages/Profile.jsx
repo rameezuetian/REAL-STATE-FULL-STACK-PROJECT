@@ -351,6 +351,11 @@ export default function Profile() {
         </span>
 
       </div>
+          <div className="text-center">
+      <span className="text-green-700 cursor-pointer hover:underline">
+        Show the Listings
+      </span>
+    </div>
 
     </div>
   );
