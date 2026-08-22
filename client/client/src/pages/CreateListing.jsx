@@ -1,8 +1,11 @@
 import React, { useState } from "react";
 import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 
 export default function CreateListing() {
   const { currentUser } = useSelector((state) => state.user);
+
+  const navigate = useNavigate();
 
   const [files, setFiles] = useState([]);
   const [imageUrls, setImageUrls] = useState([]);
@@ -35,10 +38,10 @@ export default function CreateListing() {
   const handleChange = (e) => {
     const { id, value, type, checked } = e.target;
 
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       [id]: type === "checkbox" ? checked : value,
-    });
+    }));
   };
 
   // ==============================
@@ -88,7 +91,17 @@ export default function CreateListing() {
       return;
     }
 
-    // Current images + new images
+    // Check each file is an image
+    const invalidFile = selectedFiles.find(
+      (file) => !file.type.startsWith("image/")
+    );
+
+    if (invalidFile) {
+      setUploadError("Only image files are allowed.");
+      return;
+    }
+
+    // Maximum 6 images
     if (imageUrls.length + selectedFiles.length > 6) {
       setUploadError("You can upload a maximum of 6 images.");
       return;
@@ -128,12 +141,14 @@ export default function CreateListing() {
       // Clear selected files
       setFiles([]);
 
+      // Reset file input
+      e.target.value = "";
+
       setSuccess("Images uploaded successfully!");
 
       setTimeout(() => {
         setSuccess("");
       }, 3000);
-
     } catch (error) {
       console.log("Image upload error:", error);
 
@@ -167,6 +182,13 @@ export default function CreateListing() {
     setUploadError("");
     setSuccess("");
 
+    // Check login
+    if (!currentUser?._id) {
+      setUploadError("You must be logged in to create a listing.");
+      return;
+    }
+
+    // Check images
     if (imageUrls.length === 0) {
       setUploadError("Please upload at least one image.");
       return;
@@ -174,6 +196,17 @@ export default function CreateListing() {
 
     if (imageUrls.length > 6) {
       setUploadError("You can upload a maximum of 6 images.");
+      return;
+    }
+
+    // Check discount price
+    if (
+      Number(formData.discountPrice) >
+      Number(formData.regularPrice)
+    ) {
+      setUploadError(
+        "Discount price cannot be greater than regular price."
+      );
       return;
     }
 
@@ -195,8 +228,12 @@ export default function CreateListing() {
         parking: formData.parking,
         offer: formData.offer,
 
+        sale: formData.sale,
+        rent: formData.rent,
+
         imageUrls: imageUrls,
 
+        // Current logged-in user
         userRef: currentUser._id,
       };
 
@@ -244,6 +281,9 @@ export default function CreateListing() {
       setImageUrls([]);
       setFiles([]);
 
+      // Navigate to created listing
+      navigate(`/listing/${data._id}`);
+
     } catch (error) {
       console.log("Create listing error:", error);
 
@@ -257,10 +297,6 @@ export default function CreateListing() {
 
   return (
     <main className="p-3 max-w-4xl mx-auto">
-
-      {/* =========================
-          TITLE
-      ========================== */}
 
       <h1 className="text-3xl font-semibold text-center my-7">
         Create a Listing
@@ -322,7 +358,7 @@ export default function CreateListing() {
 
           <div className="flex gap-6 flex-wrap">
 
-            <div className="flex gap-2">
+            <label className="flex gap-2">
               <input
                 type="checkbox"
                 id="sale"
@@ -330,11 +366,10 @@ export default function CreateListing() {
                 checked={formData.sale}
                 onChange={handleChange}
               />
-
               <span>Sell</span>
-            </div>
+            </label>
 
-            <div className="flex gap-2">
+            <label className="flex gap-2">
               <input
                 type="checkbox"
                 id="rent"
@@ -342,11 +377,10 @@ export default function CreateListing() {
                 checked={formData.rent}
                 onChange={handleChange}
               />
-
               <span>Rent</span>
-            </div>
+            </label>
 
-            <div className="flex gap-2">
+            <label className="flex gap-2">
               <input
                 type="checkbox"
                 id="parking"
@@ -354,11 +388,10 @@ export default function CreateListing() {
                 checked={formData.parking}
                 onChange={handleChange}
               />
-
               <span>Parking Spot</span>
-            </div>
+            </label>
 
-            <div className="flex gap-2">
+            <label className="flex gap-2">
               <input
                 type="checkbox"
                 id="furnished"
@@ -366,11 +399,10 @@ export default function CreateListing() {
                 checked={formData.furnished}
                 onChange={handleChange}
               />
-
               <span>Furnished</span>
-            </div>
+            </label>
 
-            <div className="flex gap-2">
+            <label className="flex gap-2">
               <input
                 type="checkbox"
                 id="offer"
@@ -378,9 +410,8 @@ export default function CreateListing() {
                 checked={formData.offer}
                 onChange={handleChange}
               />
-
               <span>Offer</span>
-            </div>
+            </label>
 
           </div>
 
@@ -389,7 +420,6 @@ export default function CreateListing() {
           <div className="flex flex-wrap gap-6">
 
             <div className="flex items-center gap-2">
-
               <input
                 type="number"
                 id="bedrooms"
@@ -402,11 +432,9 @@ export default function CreateListing() {
               />
 
               <p>Beds</p>
-
             </div>
 
             <div className="flex items-center gap-2">
-
               <input
                 type="number"
                 id="bathrooms"
@@ -419,7 +447,6 @@ export default function CreateListing() {
               />
 
               <p>Baths</p>
-
             </div>
 
           </div>
@@ -514,7 +541,7 @@ export default function CreateListing() {
 
           </div>
 
-          {/* IMAGE LIMIT */}
+          {/* IMAGE COUNT */}
 
           <p className="text-sm text-gray-500">
             {imageUrls.length}/6 images uploaded
@@ -536,12 +563,9 @@ export default function CreateListing() {
             </p>
           )}
 
-          {/* =========================
-              IMAGE PREVIEW
-          ========================== */}
+          {/* IMAGE PREVIEW */}
 
           {imageUrls.length > 0 && (
-
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
 
               {imageUrls.map((url, index) => (
@@ -582,12 +606,9 @@ export default function CreateListing() {
               ))}
 
             </div>
-
           )}
 
-          {/* =========================
-              CREATE LISTING
-          ========================== */}
+          {/* CREATE LISTING */}
 
           <button
             type="submit"

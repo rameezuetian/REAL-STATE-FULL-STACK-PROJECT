@@ -2,7 +2,7 @@ import React from 'react';
 
 import { useSelector, useDispatch } from 'react-redux';
 
-import { useRef, useState } from 'react';
+import { useRef, useState , useEffect } from 'react';
 
 import {Link} from 'react-router-dom'
 
@@ -35,6 +35,7 @@ export default function Profile() {
 
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [listings , setListings] = useState([]);
 
   const fileRef = useRef(null);
 
@@ -234,6 +235,26 @@ export default function Profile() {
     }
   }
 
+ useEffect(() => {
+  const fetchUserListings = async () => {
+    try {
+      const res = await fetch(
+        `/api/listing/user/${currentUser._id}`
+      );
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setListings(data);
+      }
+    } catch (error) {
+      console.log("Error fetching listings:", error);
+    }
+  };
+
+  fetchUserListings();
+}, [currentUser._id]);
+
 
 
   return (
@@ -351,12 +372,58 @@ export default function Profile() {
         </span>
 
       </div>
-          <div className="text-center">
-      <span className="text-green-700 cursor-pointer hover:underline">
-        Show the Listings
-      </span>
-    </div>
+        <div className="text-center mt-5">
+  <span className="text-green-700 font-semibold">
+    Show the Listings
+  </span>
+</div>
 
+{/* User Listings */}
+
+<div className="mt-5 space-y-4">
+
+  {listings.length === 0 ? (
+    <p className="text-center text-gray-500">
+      You haven't created any listings yet.
+    </p>
+  ) : (
+    listings.map((listing) => (
+      <div
+        key={listing._id}
+        className="border rounded-lg p-4 shadow-sm"
+      >
+        <h2 className="text-xl font-semibold">
+          {listing.name}
+        </h2>
+
+        <p className="text-gray-600 mt-1">
+          {listing.description}
+        </p>
+
+        <p className="text-gray-500 mt-1">
+          {listing.address}
+        </p>
+
+        <div className="flex justify-between mt-3">
+          <span>
+            Bedrooms: {listing.bedrooms}
+          </span>
+
+          <span className="font-semibold">
+            ${listing.regularPrice}
+          </span>
+        </div>
+
+        {listing.offer && (
+          <p className="text-green-600 mt-2">
+            Special Offer
+          </p>
+        )}
+      </div>
+    ))
+  )}
+
+</div>
     </div>
-  );
+  ); 
 }
