@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Swiper, SwiperSlide } from 'swiper/react';
-import SwiperCore from 'swiper';
 import { Navigation } from 'swiper/modules';
 import { useSelector } from 'react-redux';
 
@@ -18,8 +17,6 @@ import {
 } from 'react-icons/fa';
 
 import Contact from '../components/Contact';
-
-SwiperCore.use([Navigation]);
 
 export default function Listing() {
   const { listingId } = useParams();
@@ -181,6 +178,7 @@ export default function Listing() {
 
       {imageUrls.length > 0 ? (
         <Swiper
+          modules={[Navigation]}
           navigation
           spaceBetween={10}
           slidesPerView={1}
@@ -188,7 +186,7 @@ export default function Listing() {
           {imageUrls.map((url, index) => (
             <SwiperSlide key={`${url}-${index}`}>
               <div
-                className="h-[350px] sm:h-[450px] md:h-[550px]"
+                className="h-87.5 sm:h-112.5 md:h-137.5"
                 style={{
                   backgroundImage: `url(${url})`,
                   backgroundPosition: 'center',
@@ -200,7 +198,7 @@ export default function Listing() {
           ))}
         </Swiper>
       ) : (
-        <div className="h-[350px] sm:h-[450px] md:h-[550px] bg-gray-200 flex items-center justify-center">
+        <div className="h-87.5 sm:h-112.5 md:h-137.5 bg-gray-200 flex items-center justify-center">
           <p className="text-gray-500">
             No images available
           </p>
@@ -302,7 +300,7 @@ export default function Listing() {
             className="
               bg-red-900
               w-full
-              max-w-[200px]
+              max-w-50
               text-white
               text-center
               p-1
@@ -319,7 +317,7 @@ export default function Listing() {
               className="
                 bg-green-900
                 w-full
-                max-w-[200px]
+                max-w-50
                 text-white
                 text-center
                 p-1
@@ -421,6 +419,7 @@ export default function Listing() {
               Contact landlord
             </button>
           )}
+          {contact && <Contact/>}
 
         {/* CONTACT COMPONENT */}
 

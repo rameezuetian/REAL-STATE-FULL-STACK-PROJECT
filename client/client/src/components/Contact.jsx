@@ -1,39 +1,52 @@
-import React, { useState } from "react";
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 export default function Contact({ listing }) {
-  const [message, setMessage] = useState(
-    `Hello, I am interested in ${listing.name}.`
-  );
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    console.log("Message:", message);
-    console.log("Listing:", listing._id);
-
-    // You can connect this to your backend later.
+  const [landlord, setLandlord] = useState(null);
+  const [message, setMessage] = useState('');
+  const onChange = (e) => {
+    setMessage(e.target.value);
   };
 
+  useEffect(() => {
+    const fetchLandlord = async () => {
+      try {
+        const res = await fetch(`/api/user/${listing.userRef}`);
+        const data = await res.json();
+        setLandlord(data);
+      } catch (error) {
+        console.log(error);
+      }
+    };
+    fetchLandlord();
+  }, [listing.userRef]);
   return (
-    <div className="border p-4 rounded-lg mt-4">
-      <h2 className="text-xl font-semibold mb-3">
-        Contact Landlord
-      </h2>
+    <>
+      {landlord && (
+        <div className='flex flex-col gap-2'>
+          <p>
+            Contact <span className='font-semibold'>{landlord.username}</span>{' '}
+            for{' '}
+            <span className='font-semibold'>{listing.name.toLowerCase()}</span>
+          </p>
+          <textarea
+            name='message'
+            id='message'
+            rows='2'
+            value={message}
+            onChange={onChange}
+            placeholder='Enter your message here...'
+            className='w-full border p-3 rounded-lg'
+          ></textarea>
 
-      <textarea
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        className="border p-3 rounded-lg w-full"
-        rows="4"
-        placeholder="Write your message..."
-      />
-
-      <button
-        onClick={handleSubmit}
-        className="bg-slate-700 text-white p-3 rounded-lg mt-3 w-full uppercase hover:opacity-95"
-      >
-        Send Message
-      </button>
-    </div>
+          <Link
+          to={`mailto:${landlord.email}?subject=Regarding ${listing.name}&body=${message}`}
+          className='bg-slate-700 text-white text-center p-3 uppercase rounded-lg hover:opacity-95'
+          >
+            Send Message          
+          </Link>
+        </div>
+      )}
+    </>
   );
 }
