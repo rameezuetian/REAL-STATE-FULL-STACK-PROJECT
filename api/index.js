@@ -9,6 +9,7 @@ import userRoute from "./routes/user.route.js";
 import authRoute from "./routes/auth.route.js";
 import listingRoute from "./routes/listing.route.js"
 
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -39,12 +40,22 @@ mongoose
   });
 
 
+
+
+
 app.use(express.json());
 app.use(cookieParser())
 // api routes
 app.use("/api/user", userRoute);
 app.use("/api/auth", authRoute);
 app.use("/api/listing" , listingRoute);
+
+const clientDistPath = path.join(__dirname, "..", "client", "client", "dist");
+app.use(express.static(clientDistPath));
+app.get("/{*splat}", (req, res) => {
+  res.sendFile(path.join(clientDistPath, "index.html"));
+})
+
 
 // error handling middleware (must be last)
 app.use((err, req, res, next) => {

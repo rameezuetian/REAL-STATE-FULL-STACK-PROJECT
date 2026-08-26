@@ -32,6 +32,17 @@ const listingSchema = new mongoose.Schema(
       required: true,
     },
 
+    bathrooms: {
+      type: Number,
+      required: true,
+    },
+
+    type: {
+      type: String,
+      enum: ["sale", "rent"],
+      required: true,
+    },
+
     furnished: {
       type: Boolean,
       required: true,

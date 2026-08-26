@@ -6,8 +6,9 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": " node index.js",
-    "dev": "nodemon index.js"
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "build": "npm install && npm install --prefix ../client/client && npm run build --prefix ../client/client"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

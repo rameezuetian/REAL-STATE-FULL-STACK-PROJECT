@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
 export default function CreateListing() {
   const { currentUser } = useSelector((state) => state.user);
+  const userId = currentUser?._id || currentUser?.id;
 
   const navigate = useNavigate();
 
@@ -183,7 +184,7 @@ export default function CreateListing() {
     setSuccess("");
 
     // Check login
-    if (!currentUser?._id) {
+    if (!userId) {
       setUploadError("You must be logged in to create a listing.");
       return;
     }
@@ -223,6 +224,7 @@ export default function CreateListing() {
 
         bedrooms: Number(formData.bedrooms),
         bathrooms: Number(formData.bathrooms),
+        type: formData.rent ? "rent" : "sale",
 
         furnished: formData.furnished,
         parking: formData.parking,
@@ -234,7 +236,7 @@ export default function CreateListing() {
         imageUrls: imageUrls,
 
         // Current logged-in user
-        userRef: currentUser._id,
+        userRef: userId,
       };
 
       console.log("Listing data:", listingData);

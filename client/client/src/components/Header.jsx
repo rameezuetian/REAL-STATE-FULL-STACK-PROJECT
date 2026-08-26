@@ -1,27 +1,28 @@
 import { FaSearch } from 'react-icons/fa';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { useEffect, useState } from 'react';
+import { startTransition, useEffect, useState } from 'react';
 
 export default function Header() {
   const { currentUser } = useSelector((state) => state.user);
   const [searchTerm, setSearchTerm] = useState('');
+  const { search } = useLocation();
   const navigate = useNavigate();
   const handleSubmit = (e) => {
     e.preventDefault();
-    const urlParams = new URLSearchParams(window.location.search);
+    const urlParams = new URLSearchParams(search);
     urlParams.set('searchTerm', searchTerm);
     const searchQuery = urlParams.toString();
     navigate(`/search?${searchQuery}`);
   };
 
   useEffect(() => {
-    const urlParams = new URLSearchParams(location.search);
+    const urlParams = new URLSearchParams(search);
     const searchTermFromUrl = urlParams.get('searchTerm');
     if (searchTermFromUrl) {
-      setSearchTerm(searchTermFromUrl);
+      startTransition(() => setSearchTerm(searchTermFromUrl));
     }
-  }, [location.search]);
+  }, [search]);
   return (
     <header className='bg-slate-200 shadow-md'>
       <div className='flex justify-between items-center max-w-6xl mx-auto p-3'>

@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { startTransition, useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import ListingItem from '../components/ListingItem';
 
 export default function Search() {
   const navigate = useNavigate();
+  const { search } = useLocation();
   const [sidebardata, setSidebardata] = useState({
     searchTerm: '',
     type: 'all',
@@ -17,9 +18,10 @@ export default function Search() {
   const [loading, setLoading] = useState(false);
   const [listings, setListings] = useState([]);
   const [showMore, setShowMore] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    const urlParams = new URLSearchParams(location.search);
+    const urlParams = new URLSearchParams(search);
     const searchTermFromUrl = urlParams.get('searchTerm');
     const typeFromUrl = urlParams.get('type');
     const parkingFromUrl = urlParams.get('parking');
@@ -37,34 +39,49 @@ export default function Search() {
       sortFromUrl ||
       orderFromUrl
     ) {
-      setSidebardata({
-        searchTerm: searchTermFromUrl || '',
-        type: typeFromUrl || 'all',
-        parking: parkingFromUrl === 'true' ? true : false,
-        furnished: furnishedFromUrl === 'true' ? true : false,
-        offer: offerFromUrl === 'true' ? true : false,
-        sort: sortFromUrl || 'created_at',
-        order: orderFromUrl || 'desc',
+      startTransition(() => {
+        setSidebardata({
+          searchTerm: searchTermFromUrl || '',
+          type: typeFromUrl || 'all',
+          parking: parkingFromUrl === 'true' ? true : false,
+          furnished: furnishedFromUrl === 'true' ? true : false,
+          offer: offerFromUrl === 'true' ? true : false,
+          sort: sortFromUrl || 'created_at',
+          order: orderFromUrl || 'desc',
+        });
       });
     }
 
     const fetchListings = async () => {
       setLoading(true);
       setShowMore(false);
-      const searchQuery = urlParams.toString();
-      const res = await fetch(`/api/listing/get?${searchQuery}`);
-      const data = await res.json();
-      if (data.length > 8) {
-        setShowMore(true);
-      } else {
-        setShowMore(false);
+      setError('');
+
+      try {
+        const searchQuery = urlParams.toString();
+        const res = await fetch(`/api/listing/get?${searchQuery}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.message || 'Failed to fetch listings');
+        }
+
+        if (!Array.isArray(data)) {
+          throw new Error('Invalid listings response from server');
+        }
+
+        setShowMore(data.length > 8);
+        setListings(data);
+      } catch (fetchError) {
+        setListings([]);
+        setError(fetchError.message || 'Failed to fetch listings');
+      } finally {
+        setLoading(false);
       }
-      setListings(data);
-      setLoading(false);
     };
 
     fetchListings();
-  }, [location.search]);
+  }, [search]);
 
   const handleChange = (e) => {
     if (
@@ -117,11 +134,15 @@ export default function Search() {
   const onShowMoreClick = async () => {
     const numberOfListings = listings.length;
     const startIndex = numberOfListings;
-    const urlParams = new URLSearchParams(location.search);
+    const urlParams = new URLSearchParams(search);
     urlParams.set('startIndex', startIndex);
     const searchQuery = urlParams.toString();
     const res = await fetch(`/api/listing/get?${searchQuery}`);
     const data = await res.json();
+    if (!res.ok || !Array.isArray(data)) {
+      setError(data.message || 'Failed to fetch more listings');
+      return;
+    }
     if (data.length < 9) {
       setShowMore(false);
     }
@@ -234,6 +255,9 @@ export default function Search() {
           Listing results:
         </h1>
         <div className='p-7 flex flex-wrap gap-4'>
+          {error && !loading && (
+            <p className='text-xl text-red-600'>{error}</p>
+          )}
           {!loading && listings.length === 0 && (
             <p className='text-xl text-slate-700'>No listing found!</p>
           )}
@@ -243,9 +267,7 @@ export default function Search() {
             </p>
           )}
 
-          {!loading &&
-            listings &&
-            listings.map((listing) => (
+          {!loading && listings.map((listing) => (
               <ListingItem key={listing._id} listing={listing} />
             ))}
 

@@ -4,7 +4,10 @@ import { errorHandler } from "../utils/error.js";
 
 export const createListing = async (req, res  , next) =>{
     try {
-        const listing = await Listing.create(req.body);
+        const listing = await Listing.create({
+            ...req.body,
+            userRef: req.user.id,
+        });
         return res.status(201).json(listing)
     } catch (error) {
         next(error)
@@ -114,7 +117,7 @@ export const getListings = async (req , res , next)=>{
             type,
         }).sort(
             {[sort]:order}
-        ).limit(limit).skip(startIndex);
+        ).limit(limits).skip(startIndex);
 
 
         return res.status(200).json(listings)
